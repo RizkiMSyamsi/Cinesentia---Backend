@@ -1,0 +1,46 @@
+# Flask core
+Flask==3.1.1
+flask-restx==1.3.0
+flask-cors==5.0.1
+
+# Authentication
+Flask-JWT-Extended==4.7.1
+Flask-Bcrypt==1.0.1
+
+# Database
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
+psycopg2-binary==2.9.10
+
+# Validation / Serialization
+marshmallow==3.25.1
+flask-marshmallow==1.3.0
+marshmallow-sqlalchemy==1.4.2
+
+# Async task queue
+celery[redis]==5.5.2
+redis==5.3.0
+
+# YouTube API
+google-api-python-client==2.170.0
+
+# Language detection
+langdetect==1.0.9
+
+# NLP / ML
+tensorflow==2.19.0
+nltk==3.9.1
+numpy==2.1.3
+
+# ChromaDB (RAG vector store)
+chromadb==1.0.7
+sentence-transformers==4.1.0
+
+# Google Gemini API
+google-genai==1.16.1
+
+# Env config
+python-dotenv==1.1.0
+
+# Utilities
+# uuid==1.30

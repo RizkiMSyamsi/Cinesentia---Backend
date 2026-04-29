@@ -1,0 +1,25 @@
+# Environment
+.env
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ML model files (large)
+# app/ml/*.h5
+# app/ml/*.pkl
+
+# ChromaDB persistent data
+chroma_data/
+
+# IDE
+.vscode/
+.idea/
+
+# Migrations (keep the versions folder but ignore auto-generated files during dev)
+# migrations/versions/*.py
