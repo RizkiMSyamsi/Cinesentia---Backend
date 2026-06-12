@@ -27,6 +27,7 @@ Always cite specific examples from the comments when possible.
 Be concise, analytical, and insightful.
 Answer in the same language the user uses (Indonesian or English)."""
 
+
     @staticmethod
     def get_or_create_session(user_id, analysis_id):
         """Get existing chat session or create a new one."""
@@ -60,9 +61,13 @@ Answer in the same language the user uses (Indonesian or English)."""
         )
         db.session.add(user_msg)
 
-        # Retrieve relevant comments from ChromaDB
-        chroma = ChromaService.get_instance()
-        sources = chroma.query(analysis_id, user_message, top_k=10)
+        # Retrieve relevant comments from ChromaDB (non-fatal if unavailable)
+        sources = []
+        try:
+            chroma = ChromaService.get_instance()
+            sources = chroma.query(analysis_id, user_message, top_k=10)
+        except Exception as e:
+            logger.warning(f"ChromaDB query failed (chat will work without comment retrieval): {e}")
 
         # Build context from retrieved comments
         context_parts = []
@@ -74,7 +79,7 @@ Answer in the same language the user uses (Indonesian or English)."""
                 f"\"{meta.get('original_text', source['document'])}\""
             )
 
-        context_str = "\n".join(context_parts) if context_parts else "No relevant comments found."
+        context_str = "\n".join(context_parts) if context_parts else "No specific comments retrieved (embedding model not available)."
 
         # Build analysis summary context
         summary_str = ""
@@ -95,20 +100,41 @@ Answer in the same language the user uses (Indonesian or English)."""
             f"User question: {user_message}"
         )
 
-        # Call Gemini API
-        try:
-            api_key = os.getenv("GEMINI_API_KEY")
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-            )
-            reply_text = response.text
-        except Exception as e:
-            logger.error(f"Gemini API error: {e}")
+        # Call Gemini API with retry and model fallback
+        models_to_try = [
+            "gemini-3.1-flash-lite", # Fastest and cheapest (GA as of May 7)
+            "gemini-3-flash",        # Balanced performance
+            "gemini-3.1-pro-preview" # Most capable
+        ]
+        reply_text = None
+        api_key = os.getenv("GEMINI_API_KEY")
+        client = genai.Client(api_key=api_key)
+
+        for model_name in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+
+
+                reply_text = response.text
+                break  # Success, stop trying
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    logger.warning(f"Gemini {model_name} rate limited, trying next model...")
+                    import time
+                    time.sleep(2)  # Brief wait before trying next model
+                    continue
+                else:
+                    logger.error(f"Gemini API error ({model_name}): {e}")
+                    break
+
+        if reply_text is None:
             reply_text = (
-                "Maaf, saya mengalami kendala teknis saat memproses pertanyaan Anda. "
-                "Silakan coba lagi dalam beberapa saat."
+                "⚠️ Maaf, layanan AI sedang mengalami batas kuota. "
+                "Silakan coba lagi dalam beberapa menit."
             )
 
         # Save assistant message

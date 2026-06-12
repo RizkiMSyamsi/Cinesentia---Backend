@@ -28,9 +28,7 @@ class Config:
     # Redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
 
-    # Celery
-    CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
-    CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6380/0")
+    # Note: Celery broker/backend use REDIS_URL directly in app/__init__.py
 
     # YouTube
     YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -45,7 +43,7 @@ class Config:
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     # Analysis limits
-    MAX_COMMENTS_PER_ANALYSIS = 10000
+    MAX_COMMENTS_PER_ANALYSIS = 10
 
 
 class DevelopmentConfig(Config):

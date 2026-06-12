@@ -34,7 +34,7 @@ class YouTubeService:
         }
 
     @staticmethod
-    def scrape_comments(video_id, max_comments=10000, on_progress=None):
+    def scrape_comments(video_id, max_comments=10, on_progress=None):
         """
         Scrape English-only comments from a YouTube video.
         

@@ -10,6 +10,7 @@ Celery task for the full analysis pipeline:
 """
 
 import logging
+import uuid
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -32,7 +33,7 @@ def _update_status(analysis, status, progress, error=None):
 
 
 @shared_task(bind=True, max_retries=2)
-def run_analysis_pipeline(self, analysis_id, max_comments=10000):
+def run_analysis_pipeline(self, analysis_id, max_comments=10):
     """
     Full analysis pipeline. Runs as a Celery task.
     
@@ -90,7 +91,9 @@ def run_analysis_pipeline(self, analysis_id, max_comments=10000):
             # ML + VADER prediction
             prediction = ml.predict(original_text, preprocessed)
 
+            comment_id = str(uuid.uuid4())
             comment = Comment(
+                id=comment_id,
                 analysis_id=analysis_id,
                 original_text=original_text,
                 preprocessed_text=preprocessed,
@@ -104,7 +107,7 @@ def run_analysis_pipeline(self, analysis_id, max_comments=10000):
             comment_records.append(comment)
 
             chroma_data.append({
-                "id": comment.id,
+                "id": comment_id,
                 "preprocessed_text": preprocessed,
                 "original_text": original_text,
                 "model_sentiment": prediction["model_sentiment"],
@@ -119,14 +122,25 @@ def run_analysis_pipeline(self, analysis_id, max_comments=10000):
 
         # Step 5: Bulk insert comments
         logger.info(f"[{analysis_id}] Inserting {len(comment_records)} comments into DB...")
-        db.session.bulk_save_objects(comment_records)
+        db.session.add_all(comment_records)
+        db.session.commit()
+
+        # Re-fetch analysis to ensure it's properly tracked after bulk insert
+        analysis = Analysis.query.get(analysis_id)
         _update_status(analysis, "embedding", 80)
 
-        # Step 6: Embed into ChromaDB
+        # Step 6: Embed into ChromaDB (non-fatal — chatbot won't work but analysis still completes)
         logger.info(f"[{analysis_id}] Embedding comments into ChromaDB...")
-        chroma = ChromaService.get_instance()
-        chroma.embed_comments(analysis_id, chroma_data)
-        _update_status(analysis, "embedding", 95)
+        try:
+            chroma = ChromaService.get_instance()
+            chroma.embed_comments(analysis_id, chroma_data)
+            _update_status(analysis, "embedding", 95)
+        except Exception as embed_err:
+            logger.warning(
+                f"[{analysis_id}] ChromaDB embedding failed (chatbot will be unavailable): {embed_err}"
+            )
+            analysis.progress = 95
+            db.session.commit()
 
         # Step 7: Calculate aggregated statistics
         total = len(comment_records)
@@ -173,3 +187,4 @@ def run_analysis_pipeline(self, analysis_id, max_comments=10000):
     except Exception as e:
         logger.error(f"[{analysis_id}] Pipeline failed: {e}", exc_info=True)
         _update_status(analysis, "failed", analysis.progress, error=str(e))
+

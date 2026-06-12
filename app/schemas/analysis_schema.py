@@ -12,8 +12,8 @@ class CreateAnalysisSchema(ma.Schema):
         metadata={"description": "YouTube video URL"},
     )
     max_comments = fields.Integer(
-        load_default=10000,
-        validate=validate.Range(min=100, max=10000),
+        load_default=10,
+        validate=validate.Range(min=10, max=10000),
         metadata={"description": "Maximum number of comments to scrape (max 10000)"},
     )
 

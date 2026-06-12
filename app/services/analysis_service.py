@@ -10,7 +10,7 @@ class AnalysisService:
     """Handles analysis CRUD operations."""
 
     @staticmethod
-    def create(user_id, youtube_url, max_comments=10000):
+    def create(user_id, youtube_url, max_comments=10):
         """Create a new analysis record and enqueue the processing task."""
         video_id = extract_video_id(youtube_url)
         if not video_id:
@@ -45,7 +45,7 @@ class AnalysisService:
         return analysis
 
     @staticmethod
-    def list_for_user(user_id, page=1, per_page=10, status=None):
+    def list_for_user(user_id, page=1, per_page=1000, status=None):
         """List analyses for a user with pagination and optional status filter."""
         query = Analysis.query.filter_by(user_id=user_id).order_by(
             Analysis.created_at.desc()

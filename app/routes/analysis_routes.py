@@ -20,14 +20,14 @@ def create_analysis():
     try:
         user_id = get_jwt_identity()
 
-        # Check quota first
-        UserService.consume_quota(user_id)
+        # Check quota first (disabled to allow unlimited analyses)
+        # UserService.consume_quota(user_id)
 
         data = create_analysis_schema.load(request.get_json())
         analysis = AnalysisService.create(
             user_id=user_id,
             youtube_url=data["youtube_url"],
-            max_comments=data.get("max_comments", 10000),
+            max_comments=data.get("max_comments", 10),
         )
         return jsonify({
             "analysis_id": analysis.id,
